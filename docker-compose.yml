@@ -8,6 +8,7 @@ services:
       - redisVolume:/data
     networks:
       - AppNetwork
+
   #step 2
   vote:
     build: ./vote
@@ -54,6 +55,17 @@ services:
     networks:
       - AppNetwork
 
+  #step 5
+  result:
+    build: ./result
+    ports:
+      - "8888:8888"
+    depends_on:
+      - postgres
+    secrets:
+      - db_password
+    networks:
+      - AppNetwork
 
 
 networks:

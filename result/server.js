@@ -21,10 +21,23 @@ io.sockets.on("connection", function (socket) {
     socket.join(data.channel)
   })
 })
+//changed for environemental var
+const fs = require("fs");
+const dbPassword = fs.readFileSync("/run/secrets/db_password", "utf8").replace(/\r?\n|\r/g, '').trim();
+if (!dbPassword) {
+  console.error("❌ ERROR: Password is EMPTY or NOT READ correctly!");
+  process.exit(1);
+}
 
 const pool = new pg.Pool({
-  connectionString: "postgres://postgres:postgres@localhost/postgres",
-})
+  user: "postgres",
+  host: "postgres",
+  database: "VoteDataBase",
+  password: dbPassword,
+  port: 5432,
+});
+
+
 
 async.retry(
   {times: 1000, interval: 1000},
