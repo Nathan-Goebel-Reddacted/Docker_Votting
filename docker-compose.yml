@@ -1,6 +1,14 @@
-version: "3.8"
-
 services:
+
+  #step 1
+  redis:
+    image: redis:7.4.2-alpine
+    restart: always
+    volumes:
+      - redisVolume:/data
+    networks:
+      - AppNetwork
+  #step 2
   vote:
     build: ./vote
     ports:
@@ -11,7 +19,49 @@ services:
       FLASK_RUN_PORT: "8080"
     depends_on:
       - redis
+    networks:
+      - AppNetwork
 
-  redis:
-    image: redis:alpine
+  #step 3
+  postgres:
+    image: postgres:17.4-alpine
     restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: VoteDataBase
+      POSTGRES_PASSWORD_FILE: "/run/secrets/db_password"
+    secrets:
+      - db_password
+    volumes:
+      - postgresVolume:/var/lib/postgresql/data
+    networks:
+      - AppNetwork
+
+  #step 4
+  worker:
+    build: ./worker
+    depends_on:
+      - redis
+      - postgres
+    environment:
+      REDIS_HOST: "redis"
+      POSTGRES_HOST: "postgres"
+      POSTGRES_USER: "postgres"
+      POSTGRES_DB: "VoteDataBase"
+      POSTGRES_PASSWORD_FILE: "/run/secrets/db_password"
+    secrets:
+      - db_password
+    networks:
+      - AppNetwork
+
+
+
+networks:
+  AppNetwork:
+    driver: bridge
+volumes:
+  redisVolume:
+  postgresVolume:
+secrets:
+  db_password:
+    file: ./secrets/db_password.txt

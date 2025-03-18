@@ -7,6 +7,8 @@ using System.Threading;
 using Newtonsoft.Json;
 using Npgsql;
 using StackExchange.Redis;
+//ajout pour lire les variable environementale
+using System.IO;
 
 namespace Worker
 {
@@ -16,8 +18,15 @@ namespace Worker
         {
             try
             {
-                var pgsql = OpenDbConnection("Server=localhost;Username=postgres;Password=postgres;");
-                var redisConn = OpenRedisConnection("localhost");
+                //utilisation des variable d'environnement au lieu d'utiliser des info codée en dure
+                var postgresHost = Environment.GetEnvironmentVariable("POSTGRES_HOST") ?? "localhost";
+                var postgresUser = Environment.GetEnvironmentVariable("POSTGRES_USER") ?? "postgres";
+                var postgresDb = Environment.GetEnvironmentVariable("POSTGRES_DB") ?? "VoteDataBase";
+                var postgresPassword = File.ReadAllText("/run/secrets/db_password").Trim();
+                var redisHost = Environment.GetEnvironmentVariable("REDIS_HOST") ?? "localhost";
+
+                var pgsql = OpenDbConnection($"Server={postgresHost};Username={postgresUser};Password={postgresPassword};Database={postgresDb};");
+                var redisConn = OpenRedisConnection(redisHost);
                 var redis = redisConn.GetDatabase();
 
                 var keepAliveCommand = pgsql.CreateCommand();
