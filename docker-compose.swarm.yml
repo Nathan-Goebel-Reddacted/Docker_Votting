@@ -1,0 +1,99 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7.4.2-alpine
+    volumes:
+      - redisVolume:/data
+    networks:
+      - AppNetwork
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  vote:
+    image: myapp_vote:latest
+    ports:
+      - "8080:8080"
+    environment:
+      REDIS_HOST: "redis"
+      FLASK_RUN_HOST: "0.0.0.0"
+      FLASK_RUN_PORT: "8080"
+    networks:
+      - AppNetwork
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
+
+  postgres:
+    image: postgres:17.4-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: VoteDataBase
+      POSTGRES_PASSWORD_FILE: "/run/secrets/db_password"
+    secrets:
+      - db_password
+    volumes:
+      - postgresVolume:/var/lib/postgresql/data
+    networks:
+      - AppNetwork
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  worker:
+    image: myapp_worker:latest
+    environment:
+      REDIS_HOST: "redis"
+      POSTGRES_HOST: "postgres"
+      POSTGRES_USER: "postgres"
+      POSTGRES_DB: "VoteDataBase"
+      POSTGRES_PASSWORD_FILE: "/run/secrets/db_password"
+    secrets:
+      - db_password
+    networks:
+      - AppNetwork
+    deploy:
+      replicas: 3
+      restart_policy:
+        condition: on-failure
+
+  result:
+    image: myapp_result:latest
+    ports:
+      - "8888:8888"
+    networks:
+      - AppNetwork
+    secrets:
+      - db_password
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
+
+networks:
+  AppNetwork:
+    driver: overlay
+
+volumes:
+  redisVolume:
+    driver: local
+  postgresVolume:
+    driver: local
+
+secrets:
+  db_password:
+    external: true
